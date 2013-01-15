@@ -1,0 +1,152 @@
+#!/usr/bin/env python
+
+import os
+import httplib
+from urllib import urlencode
+import sys
+from optparse import OptionParser
+
+host = "cloud068.gridpp.rl.ac.uk"
+port = 8181
+service = "/ijp_portal-1.2.0-SNAPSHOT/rest/jm/"
+
+def login(args):
+    import logging
+    import getpass
+    from suds.client import Client, WebFault
+
+    logging.basicConfig(level=logging.CRITICAL)
+
+    credentials = args
+    if len(credentials)%2 != 1:
+        fatal("login subcommand requires authenticator followed by even number of arguments to represent name value pairs")
+    client=Client("https://" + host + ":8181/ICATService/ICAT?wsdl")
+
+    service = client.service
+    factory = client.factory
+
+    credentialMap = factory.create("credentials")
+    for i in range(1, len(credentials), 2):
+        entry = factory.create("credentials.entry")
+        entry.key = credentials[i]
+        if credentials[i+1] == "-":
+            print "Credentials", credentials
+            entry.value = getpass.getpass()
+        else:
+            entry.value = credentials[i+1]
+        credentialMap.entry.append(entry)
+    sessionId = service.login(credentials[0], credentialMap)
+
+    with open(os.path.join(os.environ["HOME"],".icatsessionid"), "w") as f:
+        f.write(sessionId)
+
+    print sessionId
+
+def submit(args):
+    print "submit", args
+    parser.add_option("-f", "--family", dest="family",
+                      help="family of accounts for running the job", metavar="FAMILY")
+
+    if "--" in args:
+        l = args.index("--")
+        prefix = sys.argv[:l]
+        postfix = sys.argv[l+1:]
+    else:
+        prefix = []
+        postfix = args
+
+    (options, args) = parser.parse_args(prefix)
+    if len(postfix) == 0:
+        print >> sys.stderr,  "Must specify job mnemonic followed by any parameters of the job"
+        sys.exit(1)
+
+    jobName = postfix[0]
+    if len(postfix) > 1:
+        jobOptions= " ".join(postfix[1:])
+    else:
+        jobOptions = None
+
+    family = options.family
+    parms = {}
+    parms ["jobName"]=jobName
+    if family: parms["family"] = family
+    if jobOptions: parms["options"] = jobOptions
+
+    processUrl("POST", "submit", parms)
+
+def status(args):
+    (options, args) = parser.parse_args(args)
+    if len(args) > 1: fatal("status subcommand expects at most one argument")
+    if len(args) == 1: 
+        url =  "status/" + args[0]
+    else: 
+        url = "status"
+    processUrl("GET",url,{})
+
+def output(args):
+    parser.add_option("-e", "--error", action="store_true", dest="error",
+                  help="request stderr rather than stdout")
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1: fatal("output subcommand must have one argument: the job id")
+    if options.error: 
+        url =  "error/" + args[0]
+    else: 
+        url =  "output/" + args[0]
+    processUrl("GET",url,{})
+
+def delete(args):
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1: fatal( "Must have one argument: the job id")
+    url =  "delete/" + args[0]
+    processUrl("DELETE",url,{})
+ 
+def cancel(args):
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1: fatal("Must have one argument: the job id")
+    url =  "cancel/" + args[0]
+    processUrl("POST",url,{})
+  
+subcommands = {}
+subcommands["login"]=login
+subcommands["status"]=status
+subcommands["submit"]=submit
+subcommands["output"]=output
+subcommands["delete"]=delete
+subcommands["cancel"]=cancel
+
+def processUrl(method, url, parms):
+    with open(os.path.join(os.environ["HOME"],".icatsessionid"), "r") as f:
+        sessionId = f.readline() 
+    parms["sessionId"] = sessionId
+    url = service + url + "?" + urlencode(parms)
+    conn = httplib.HTTPSConnection(host, port)
+
+    conn.request(method, url)
+    response = conn.getresponse()
+    if response.status == 200:
+        op = response.read()
+        if op: print op
+    elif response.status == 404:
+        print "Page Not Found"
+    else:
+        print response.status, response.reason+":", response.read()
+    conn.close()
+
+def fatal(msg):
+    print >> sys.stderr, msg
+    sys.exit(1)
+
+if len(sys.argv) == 1:
+    fatal("First argument must be one of " + str(subcommands.keys()))
+
+parser = OptionParser()
+command = sys.argv[1]
+op = subcommands.get(command)
+
+if not op:
+    fatal("First argument must be one of " + str(subcommands.keys()))
+
+op(sys.argv[2:])
+
+
+
