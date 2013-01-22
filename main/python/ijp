@@ -43,19 +43,19 @@ def login(args):
     print sessionId
 
 def submit(args):
-    print "submit", args
     parser.add_option("-f", "--family", dest="family",
                       help="family of accounts for running the job", metavar="FAMILY")
 
     if "--" in args:
         l = args.index("--")
-        prefix = sys.argv[:l]
-        postfix = sys.argv[l+1:]
+        prefix = args[:l]
+        postfix = args[l+1:]
     else:
         prefix = []
         postfix = args
 
     (options, args) = parser.parse_args(prefix)
+
     if len(postfix) == 0:
         print >> sys.stderr,  "Must specify job mnemonic followed by any parameters of the job"
         sys.exit(1)
@@ -147,6 +147,3 @@ if not op:
     fatal("First argument must be one of " + str(subcommands.keys()))
 
 op(sys.argv[2:])
-
-
-
