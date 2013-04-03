@@ -71,7 +71,7 @@ to the screen turned off. For example: '%prog login ldap username smf98 password
 def submit(args):
     parser.set_usage("usage: %prog job [parameter...]") 
     parser.set_description("""All parameters are passed to the job. See '%prog jobtype' for a list of  possible
- job types or '%prog jobtype fred' for a list of the parameters and options that the job type 'fred' expects.""")
+ job types or '%prog jobtype fred' for a list of the parameters that the job type 'fred' expects.""")
  
     if len(args) == 0:
         print >> sys.stderr, "Must specify job mnemonic followed by any parameters of the job (or '-h' for help)"
@@ -82,16 +82,10 @@ def submit(args):
         return
         
     jobName = args[0]
-    if len(args) > 1:
-        jobOptions = "'" + args[1] + "'"
-        for opt in args[2:]:
-            jobOptions = jobOptions + " '" + opt + "'"
-    else:
-        jobOptions = None
           
     parms = {}
     parms ["jobName"] = jobName
-    if jobOptions: parms["options"] = jobOptions
+    parms["parameter"] = args[1:]
     processUrl("POST", "submit", parms)
 
 def status(args):
@@ -219,7 +213,7 @@ def processUrl(method, url, parms):
         
     try:
         conn = httplib.HTTPSConnection(host)
-        conn.request(method, rest + url + "?" + urlencode(parms))
+        conn.request(method, rest + url + "?" + urlencode(parms, True))
     except ssl.SSLError:  # Try again if it fails first time
         conn = httplib.HTTPSConnection(host)
         conn.request(method, rest + url + "?" + urlencode(parms))
