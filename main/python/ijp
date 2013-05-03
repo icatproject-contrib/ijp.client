@@ -10,6 +10,7 @@ import ssl
 import logging
 import getpass
 from suds.client import Client, WebFault
+import subprocess
 
 hostUrl = None
 rest = "/ijp_portal-1.2.0-SNAPSHOT/rest/jm/"
@@ -86,7 +87,11 @@ def submit(args):
     parms = {}
     parms ["jobName"] = jobName
     parms["parameter"] = args[1:]
-    processUrl("POST", "submit", parms)
+    result = processUrl("POST", "submit", parms, return_value = True)
+    if result.startswith("rdesktop"):
+        subprocess.call(result.split())
+    else:
+        print result
 
 def status(args):
     parser.set_usage("usage: %prog status [jobid]")
@@ -208,7 +213,7 @@ def getSessionId():
         fatal("Please log in with '" + os.path.basename(sys.argv[0]) + " login ...'")
     return sessionId
 
-def processUrl(method, url, parms):    
+def processUrl(method, url, parms, return_value = False):    
     parms["sessionId"] = getSessionId()
         
     try:
@@ -220,9 +225,16 @@ def processUrl(method, url, parms):
     response = conn.getresponse()
     if response.status == 200:
         op = response.read()
-        if op: print op
+        if return_value: 
+            return op
+        elif op:
+            print op
     else:
-        print response.status, response.reason + ":", response.read()
+        status = str(response.status) + " " + response.reason + ": " + response.read()
+        if return_value:
+            return status
+        else:
+            print status
     conn.close()
 
 def fatal(msg):
