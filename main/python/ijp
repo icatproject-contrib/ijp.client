@@ -13,7 +13,7 @@ from suds.client import Client, WebFault
 import subprocess
 
 hostUrl = None
-rest = "/ijp_portal-1.2.0-SNAPSHOT/rest/jm/"
+rest = "/ijp_portal-2.0.0-SNAPSHOT/rest/jm/"
 
 def readServices(path):
     try:
