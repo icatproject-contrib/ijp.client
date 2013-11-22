@@ -13,7 +13,7 @@ from suds.client import Client, WebFault
 import subprocess
 
 hostUrl = None
-rest = "/ijp_portal-2.0.0-SNAPSHOT/rest/jm/"
+rest = "/ijp/rest/jm/"
 
 def readServices(path):
     try:
@@ -27,6 +27,35 @@ def readServices(path):
         return result
     except IOError:
         return None
+    
+def logout(args):
+    parser.set_usage("usage: %prog logout")
+    parser.set_description("Logout from current IJP/ICAT session.")
+    
+    client = Client(hostUrl + "/ICATService/ICAT?wsdl")
+    service = client.service
+ 
+    try:
+        sessionId = getSessionId()
+        service.logout(sessionId)
+        os.remove(os.path.join(os.environ["HOME"], ".icatsessionid"))
+    except WebFault as wf:
+        exc = wf.fault.detail.IcatException
+        fatal(exc.type + " exception: " + exc.message)
+ 
+def refresh(args):
+    parser.set_usage("usage: %prog refresh")
+    parser.set_description("Keep the current IJP/ICAT session running.")
+    
+    client = Client(hostUrl + "/ICATService/ICAT?wsdl")
+    service = client.service
+ 
+    try:
+        sessionId = getSessionId()
+        service.refresh(sessionId)
+    except WebFault as wf:
+        exc = wf.fault.detail.IcatException
+        fatal(exc.type + " exception: " + exc.message) 
 
 def login(args):
     parser.set_usage("usage: %prog login authenticator [credential name credential value]...") 
@@ -36,7 +65,7 @@ of credentials. If '-' is used as a value you will be prompted to enter the actu
 to the screen turned off. For example: '%prog login ldap username smf98 password -'""")
  
     if len(args) == 0:
-        print >> sys.stderr, "Must specify job authenticator followed by any parameters of the job (or '-h' for help)"
+        print >> sys.stderr, "Must specify authenticator followed by even number of arguments to represent name value pairs (or '-h' for help)"
         sys.exit(1)
         
     if "-h" in args or "--help" in args:
@@ -87,7 +116,7 @@ def submit(args):
     parms = {}
     parms ["jobName"] = jobName
     parms["parameter"] = args[1:]
-    result = processUrl("POST", "submit", parms, return_value = True)
+    result = processUrl("POST", "submit", parms, return_value=True)
     if result.startswith("rdesktop"):
         subprocess.call(result.split())
     else:
@@ -204,6 +233,8 @@ subcommands["jobtype"] = jobtype
 subcommands["-h"] = help
 subcommands["--help"] = help
 subcommands["session"] = session
+subcommands["refresh"] = refresh
+subcommands["logout"] = logout
 
 def getSessionId():
     try:
@@ -213,7 +244,7 @@ def getSessionId():
         fatal("Please log in with '" + os.path.basename(sys.argv[0]) + " login ...'")
     return sessionId
 
-def processUrl(method, url, parms, return_value = False):    
+def processUrl(method, url, parms, return_value=False):    
     parms["sessionId"] = getSessionId()
         
     try:
