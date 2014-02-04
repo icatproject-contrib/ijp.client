@@ -20,10 +20,12 @@ def readServices(path):
         result = {}
         with open(path) as ss:
             for line in ss.readlines():
-                i = line.index(" ")
-                key = line[:i].strip()
-                value = line[i + 1:].strip()
-                result[key] = value
+                line = line.strip()
+                if line:
+                    i = line.index(" ")
+                    key = line[:i].strip()
+                    value = line[i + 1:].strip()
+                    result[key] = value
         return result
     except IOError:
         return None
@@ -193,7 +195,7 @@ def session(args):
         version = service.getApiVersion()
         userName = service.getUserName(sessionId)
         minutes = str(int(service.getRemainingMinutes(sessionId)))
-        print "User", userName, "connected to ICAT", version, "at", hostUrl, "with", minutes, "minutes left."
+        print "User", userName, "(" + sessionId + ")", "connected to ICAT", version, "at", hostUrl, "with", minutes, "minutes left."
     except WebFault as wf:
         exc = wf.fault.detail.IcatException
         fatal(exc.type + " exception: " + exc.message)
@@ -216,10 +218,10 @@ elif os.path.isfile(fSystem):
 if not services and not hostUrl:
     hostUrl = raw_input("Please specify the url of the server you wish to use in the form https://example.com:8181 ")
     with open (fLocal, "w") as ss:
-        print >> ss, "url", hostUrl
+        print >> ss, "ijpurl", hostUrl
     print "This has been recorded in ~/.glassfish.services"
 elif services:
-        hostUrl = services["url"]
+        hostUrl = services["ijpurl"]
 host = urlparse(hostUrl).netloc
         
 subcommands = {}
