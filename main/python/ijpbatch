@@ -99,9 +99,10 @@ to the screen turned off. For example: '%prog login ldap username smf98 password
     print sessionId
 
 def submit(args):
-    parser.set_usage("usage: %prog job [parameter...]") 
-    parser.set_description("""All parameters are passed to the job. See '%prog jobtype' for a list of  possible
- job types or '%prog jobtype fred' for a list of the parameters that the job type 'fred' expects.""")
+    parser.set_usage("usage: %prog submit executable [parameter...]") 
+    parser.set_description("""Submit a job """)
+    parser.add_option("--interactive", help="specify the job to be interactive", action="store_true")
+    parser.add_option("--family", help="specify the family to use")
  
     if len(args) == 0:
         print >> sys.stderr, "Must specify job mnemonic followed by any parameters of the job (or '-h' for help)"
@@ -130,7 +131,38 @@ def submit(args):
         subprocess.call(result.split())
     else:
         print result
-
+        
+def estimate(args):
+    parser.set_usage("usage: %prog estimate executable [parameter...]") 
+    parser.set_description("""Return an estimate of the time to complete a batch job or to start an interactive one. 
+     """)
+    parser.add_option("--interactive", help="specify the job to be interactive", action="store_true")
+    parser.add_option("--family", help="specify the family to use")
+ 
+    if len(args) == 0:
+        print >> sys.stderr, "Must specify job mnemonic followed by any parameters of the job (or '-h' for help)"
+        sys.exit(1)
+        
+    if "-h" in args or "--help" in args:
+        parser.print_help()
+        return
+    
+    parms = {}
+    
+    if "--interactive" in args:
+        parms ["interactive"] = True
+        args.remove("--interactive")
+    
+    if "--family" in args:
+        n = args.index("-family")
+        parms["family"] = args[n + 1]
+        del args[n]
+        del args[n]
+          
+    parms ["executable"] = args[0]
+    parms["parameter"] = args[1:]
+    processUrl("GET", "estimate", parms)
+          
 def status(args):
     parser.set_usage("usage: %prog status [jobid]")
     parser.set_description("Get an overview of all jobs or details of one job if you specify its jobid.")
@@ -140,12 +172,12 @@ def status(args):
         url = "status/" + args[0]
         job = json.loads(processUrl("GET", url, {}, return_value=True))
         print job["Id"], job["Executable"], job["Date of submission"], job["Status"]
-        if  job["Status"] not in ["Completed", "Executing", "Held", "Running", "Queued"]: fatal("Invalid value for Status")
+        if  job["Status"] not in ["Completed", "Executing", "Held", "Running", "Queued", "Cancelled"]: fatal("Invalid value for Status")
     else: 
         url = "status"
         for job in json.loads(processUrl("GET", url, {}, return_value=True)):
             print job["Id"], job["Executable"], job["Date of submission"], job["Status"]
-            if job["Status"] not in ["Completed", "Executing", "Held", "Running", "Queued"]: fatal("Invalid value for Status")
+            if job["Status"] not in ["Completed", "Executing", "Held", "Running", "Queued", "Cancelled"]: fatal("Invalid value for Status")
     
 def output(args):
     parser.set_usage("usage: %prog output [options] jobid")
@@ -237,6 +269,7 @@ subcommands["status"] = status
 subcommands["submit"] = submit
 subcommands["output"] = output
 subcommands["delete"] = delete
+subcommands["estimate"] = estimate
 subcommands["cancel"] = cancel
 subcommands["-h"] = help
 subcommands["--help"] = help
