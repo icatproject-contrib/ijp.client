@@ -105,7 +105,7 @@ def submit(args):
     parser.add_option("--family", help="specify the family to use")
  
     if len(args) == 0:
-        print >> sys.stderr, "Must specify job mnemonic followed by any parameters of the job (or '-h' for help)"
+        print >> sys.stderr, "Must specify executable followed by any parameters of the job (or '-h' for help)"
         sys.exit(1)
         
     if "-h" in args or "--help" in args:
@@ -127,10 +127,11 @@ def submit(args):
     parms ["executable"] = args[0]
     parms["parameter"] = args[1:]
     result = processUrl("POST", "submit", parms, return_value=True)
-    if result.startswith("rdesktop"):
-        subprocess.call(result.split())
-    else:
-        print result
+    if result:
+        if result.startswith("rdesktop"):
+            subprocess.call(result.split())
+        else:
+            print result
         
 def estimate(args):
     parser.set_usage("usage: %prog estimate executable [parameter...]") 
@@ -170,14 +171,19 @@ def status(args):
     if len(args) > 1: fatal("status subcommand expects at most one argument")
     if len(args) == 1: 
         url = "status/" + args[0]
-        job = json.loads(processUrl("GET", url, {}, return_value=True))
-        print job["Id"], job["Executable"], job["Date of submission"], job["Status"]
-        if  job["Status"] not in ["Completed", "Executing", "Held", "Running", "Queued", "Cancelled"]: fatal("Invalid value for Status")
+        job = processUrl("GET", url, {}, return_value=True)
+        if job:
+            job = json.loads(job)
+            print job["Id"], job["Executable"], job["Date of submission"], job["Status"]
+            if  job["Status"] not in ["Completed", "Executing", "Held", "Running", "Queued", "Cancelled"]: fatal("Invalid value for Status")
     else: 
         url = "status"
-        for job in json.loads(processUrl("GET", url, {}, return_value=True)):
-            print job["Id"], job["Executable"], job["Date of submission"], job["Status"]
-            if job["Status"] not in ["Completed", "Executing", "Held", "Running", "Queued", "Cancelled"]: fatal("Invalid value for Status")
+        jobs = processUrl("GET", url, {}, return_value=True)
+        if jobs: 
+            jobs = json.loads(jobs)
+            for job in jobs:
+                print job["Id"], job["Executable"], job["Date of submission"], job["Status"]
+                if job["Status"] not in ["Completed", "Executing", "Held", "Running", "Queued", "Cancelled"]: fatal("Invalid value for Status")
     
 def output(args):
     parser.set_usage("usage: %prog output [options] jobid")
@@ -248,19 +254,18 @@ if os.path.isfile(fLocal):
     services = readServices(fLocal)
 elif os.path.isfile(fSystem):
     services = readServices(fSystem)
-if not services:
-    icatUrl = raw_input("Please specify the url of the icat server you wish to use in the form https://example.com:8181 ")
-    batchUrl = raw_input("Please specify the url of the batch server you wish to use in the form https://example.com:8181 ")
-    batchPrefix = raw_input("Please specify the batch system prefix - e.g. unixbatch")
+else:
+    services = {}
+if "icatUrl" not in services or "batchUrl" not in services:
+    if "icatUrl" not in services: services["icatUrl"] = raw_input("Please specify the url of the icat server you wish to use in the form https://example.com:8181 ")
+    if "batchUrl" not in services: services["batchUrl"] = raw_input("Please specify the url of the batch server you wish to use in the form https://example.com:8181 ")
     with open (fLocal, "w") as ss:
-        print >> ss, "icatUrl", icatUrl
-        print >> ss, "batchUrl", batchUrl
-        print >> ss, "batchPrefix", batchPrefix
-    print "This has been recorded in", flocal
-elif services:
-        icatUrl = services["icatUrl"]
-        batchUrl = services["batchUrl"]
-        batchPrefix = services["batchPrefix"]
+        for key in services.keys():
+            print >> ss, key, services[key]
+    print "This has been recorded in", fLocal
+
+icatUrl = services["icatUrl"]
+batchUrl = services["batchUrl"]
 batchHost = urlparse(batchUrl).netloc
         
 subcommands = {}
@@ -287,7 +292,7 @@ def getSessionId():
 
 def processUrl(method, relativeUrl, parameters, return_value=False):
     parameters["sessionId"] = getSessionId()
-    path = "/" + batchPrefix + "/" + relativeUrl
+    path = "/batch/" + relativeUrl
     if parameters: parameters = urlencode(parameters, True)
     if parameters and method != "POST":
         path = path + "?" + parameters
@@ -311,13 +316,13 @@ def processUrl(method, relativeUrl, parameters, return_value=False):
     rc = response.status
     responseString = response.read()
     conn.close()
-    if return_value:
-        return responseString
-    elif rc / 100 == 2:
-        if responseString: print responseString
+  
+    if rc / 100 == 2:
+        if responseString:
+            if return_value: return responseString
+            else: print responseString
     else:
         print rc, responseString
-
 
 def fatal(msg):
     print >> sys.stderr, msg
