@@ -11,6 +11,7 @@ import logging
 import getpass
 from suds.client import Client, WebFault
 import subprocess
+import json
 
 def readServices(path):
     try:
@@ -143,16 +144,15 @@ def status(args):
         job = processUrl("GET", url, {}, return_value=True)
         if job:
             job = json.loads(job)
-            print job["Id"], job["Executable"], job["Date of submission"], job["Status"]
+            print job["jobId"], job["name"], job["date"], job["status"]
     else: 
         url = "status"
         jobs = processUrl("GET", url, {}, return_value=True)
-        if jobs: 
+        if jobs:
             jobs = json.loads(jobs)
             for job in jobs:
-                print job["Id"], job["Executable"], job["Date of submission"], job["Status"]
-
-
+                print job["jobId"], job["name"], job["date"], job["status"]  
+ 
 def output(args):
     parser.set_usage("usage: %prog output [options] jobid")
     parser.set_description("Get output from a job. You may request the error output. If the job is running it will return the output generated so far.")

@@ -163,6 +163,8 @@ def estimate(args):
     parms ["executable"] = args[0]
     parms["parameter"] = args[1:]
     processUrl("GET", "estimate", parms)
+    
+goodStatus = ["Completed", "Executing", "Held", "Running", "Queued", "Cancelled", "Unknown"]
           
 def status(args):
     parser.set_usage("usage: %prog status [jobid]")
@@ -175,7 +177,7 @@ def status(args):
         if job:
             job = json.loads(job)
             print job["Id"], job["Executable"], job["Date of submission"], job["Status"]
-            if  job["Status"] not in ["Completed", "Executing", "Held", "Running", "Queued", "Cancelled"]: fatal("Invalid value for Status")
+            if  job["Status"] not in goodStatus: fatal("Invalid value for Status")
     else: 
         url = "status"
         jobs = processUrl("GET", url, {}, return_value=True)
@@ -183,7 +185,7 @@ def status(args):
             jobs = json.loads(jobs)
             for job in jobs:
                 print job["Id"], job["Executable"], job["Date of submission"], job["Status"]
-                if job["Status"] not in ["Completed", "Executing", "Held", "Running", "Queued", "Cancelled"]: fatal("Invalid value for Status")
+                if job["Status"] not in goodStatus: fatal("Invalid value for Status")
     
 def output(args):
     parser.set_usage("usage: %prog output [options] jobid")
