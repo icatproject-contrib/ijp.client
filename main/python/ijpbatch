@@ -168,24 +168,27 @@ goodStatus = ["Completed", "Executing", "Held", "Running", "Queued", "Cancelled"
           
 def status(args):
     parser.set_usage("usage: %prog status [jobid]")
+    parser.set_description("Get details of one job specified by jobid.")
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1: fatal("status subcommand expects one argument")
+    url = "status/" + args[0]
+    job = processUrl("GET", url, {}, return_value=True)
+    if job:
+        job = json.loads(job)
+        print job["status"]
+        if  job["status"] not in goodStatus: fatal("Invalid value for Status")
+         
+def list(args):
+    parser.set_usage("usage: %prog list")
     parser.set_description("Get an overview of all jobs or details of one job if you specify its jobid.")
     (options, args) = parser.parse_args(args)
-    if len(args) > 1: fatal("status subcommand expects at most one argument")
-    if len(args) == 1: 
-        url = "status/" + args[0]
-        job = processUrl("GET", url, {}, return_value=True)
-        if job:
-            job = json.loads(job)
-            print job["Id"], job["Executable"], job["Date of submission"], job["Status"]
-            if  job["Status"] not in goodStatus: fatal("Invalid value for Status")
-    else: 
-        url = "status"
-        jobs = processUrl("GET", url, {}, return_value=True)
-        if jobs: 
-            jobs = json.loads(jobs)
-            for job in jobs:
-                print job["Id"], job["Executable"], job["Date of submission"], job["Status"]
-                if job["Status"] not in goodStatus: fatal("Invalid value for Status")
+    if len(args) != 0: fatal("status subcommand expects no arguments")
+    url = "list"
+    jobs = processUrl("GET", url, {}, return_value=True)
+    if jobs: 
+        jobs = json.loads(jobs)
+        for job in jobs:
+            print job
     
 def output(args):
     parser.set_usage("usage: %prog output [options] jobid")
@@ -272,6 +275,7 @@ batchHost = urlparse(batchUrl).netloc
         
 subcommands = {}
 subcommands["login"] = login
+subcommands["list"] = list
 subcommands["status"] = status
 subcommands["submit"] = submit
 subcommands["output"] = output
