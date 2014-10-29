@@ -164,7 +164,7 @@ def estimate(args):
     parms["parameter"] = args[1:]
     processUrl("GET", "estimate", parms)
     
-goodStatus = ["Completed", "Executing", "Held", "Running", "Queued", "Cancelled", "Unknown"]
+goodStatus = ["Completed", "Executing", "Held", "Queued", "Cancelled", "Unknown"]
           
 def status(args):
     parser.set_usage("usage: %prog status [jobid]")
