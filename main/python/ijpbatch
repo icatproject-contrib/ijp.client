@@ -298,6 +298,8 @@ def getSessionId():
 
 def processUrl(method, relativeUrl, parameters, return_value=False):
     parameters["sessionId"] = getSessionId()
+    parameters["icatUrl"] = icatUrl
+    print parameters
     path = "/batch/" + relativeUrl
     if parameters: parameters = urlencode(parameters, True)
     if parameters and method != "POST":
